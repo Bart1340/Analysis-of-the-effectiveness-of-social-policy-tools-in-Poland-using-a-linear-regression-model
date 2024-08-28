@@ -1,0 +1,1529 @@
+---
+title: "Efektywność" 
+output:
+  html_document:
+    fig_width: 12
+    fig_height: 7
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ładowanie bibliotek
+
+```{r}
+library(car)
+library(dplyr)
+library(geojsonio)
+library(maps)
+library(sf)
+library(ggrepel)
+library(readxl)
+library(ggplot2)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(ggthemes)
+options(scipen = 999)
+
+```
+
+## Ładowanie danych
+
+```{r}
+excel_file <- "Efektywność.xlsx"
+
+sheet_name1 <- "Skuteczność1"
+sheet_name2 <- "Skuteczność2"
+sheet_name3 <- "Ubóstwo"
+sheet_name4 <- "WydatkiOgólne"
+sheet_name5 <- "WydatkiDziały"
+sheet_name6 <- "WydatkiCzęści"
+sheet_name7 <- "WydatkiFundusze"
+sheet_name8 <- "WydatkiNajważniejsze"
+
+Skuteczność1 <- read_excel(excel_file, sheet = sheet_name1, col_names = TRUE)
+Skuteczność2 <- read_excel(excel_file, sheet = sheet_name2, col_names = TRUE)
+Ubóstwo <- read_excel(excel_file, sheet = sheet_name3, col_names = TRUE)
+WydatkiOgólne <- read_excel(excel_file, sheet = sheet_name4, col_names = TRUE)
+WydatkiDziały <- read_excel(excel_file, sheet = sheet_name5, col_names = TRUE)
+WydatkiCzęści <- read_excel(excel_file, sheet = sheet_name6, col_names = TRUE)
+WydatkiFundusze <- read_excel(excel_file, sheet = sheet_name7, col_names = TRUE)
+WydatkiNajważniejsze <- read_excel(excel_file, sheet = sheet_name8, col_names = TRUE)
+```   
+
+## Skuteczność1 Wykres
+
+```{r}
+Skuteczność1Wykres <- ggplot(Skuteczność1, aes(x = Rok)) +
+  geom_line(aes(y = `bez uwzględnienienia transferów socjalnych`, group = 1, color = "bez uwzględnienienia transferów socjalnych"), show.legend = TRUE, size = 1.5, linetype = "solid", ) +
+  geom_point(aes(y = `bez uwzględnienienia transferów socjalnych`, color = "bez uwzględnienienia transferów socjalnych", shape = "bez uwzględnienienia transferów socjalnych"), size = 3) +
+  
+   geom_line(aes(y = `po uwzględnienieniu wszystkich transferów socjalnych`, group = 1, color = "po uwzględnienieniu wszystkich transferów socjalnych"), show.legend = TRUE, size = 1.5, linetype = "solid") +
+  geom_point(aes(y = `po uwzględnienieniu wszystkich transferów socjalnych`, color = "po uwzględnienieniu wszystkich transferów socjalnych", shape = "po uwzględnienieniu wszystkich transferów socjalnych"), size = 3) +
+  
+  geom_line(aes(y = `po uwzględnieniu wyłącznie emerytur i rent`, group = 1, color = "po uwzględnieniu wyłącznie emerytur i rent"), show.legend = TRUE, size = 1.5, linetype = "solid") +
+  geom_point(aes(y = `po uwzględnieniu wyłącznie emerytur i rent`, color = "po uwzględnieniu wyłącznie emerytur i rent", shape = "po uwzględnieniu wyłącznie emerytur i rent"), size = 3) +
+  
+  
+geom_text_repel(aes(y = `bez uwzględnienienia transferów socjalnych`, label = round(`bez uwzględnienienia transferów socjalnych`, 2)), size = 3, color = "black") +
+geom_text_repel(aes(y = `po uwzględnieniu wyłącznie emerytur i rent`, label = round(`po uwzględnieniu wyłącznie emerytur i rent`, 2)), size = 3, color = "black") +
+geom_text_repel(aes(y = `po uwzględnienieniu wszystkich transferów socjalnych`, label = round(`po uwzględnienieniu wszystkich transferów socjalnych`, 2)), size = 3, color = "black") +
+  
+  scale_y_continuous(
+   breaks = seq(0, 45, by = 3),
+    limits = c(0, 45),
+    expand = c(0, 3)) +
+  theme_stata() +
+  scale_fill_stata() +
+  scale_color_stata() +
+  scale_shape_manual(values = c("bez uwzględnienienia transferów socjalnych" = 15, "po uwzględnieniu wyłącznie emerytur i rent" = 16, "po uwzględnienieniu wszystkich transferów socjalnych" = 17)) +
+  theme(legend.position = "left") +
+  
+  labs(
+    x = "Rok",
+    y = "Zasięg w %",
+    color = "Wariant wskaźnika",
+    shape = "Wariant wskaźnika"
+  )
+
+Skuteczność1Wykres
+```
+
+## Skuteczność2Wykres
+
+```{r}
+Skuteczność2_long <- Skuteczność2 %>%
+  pivot_longer(cols = c(`Emerytury i renty`, `Inne transfery socjalne`), 
+               names_to = "Grupa świadczeń", values_to = "Wartość")
+
+Skuteczność2Wykres <- ggplot(Skuteczność2_long, aes(x = Rok, y = Wartość, fill = `Grupa świadczeń`)) +
+  geom_col(position = position_dodge(width = 0.8), show.legend = TRUE) +
+  scale_y_continuous(
+    breaks = seq(0, 22, by = 2),
+    limits = c(0, 22),
+    expand = c(0, 2)
+  ) +
+  theme_stata() +
+  scale_fill_stata() +
+  geom_text(aes(label = round(Wartość, 1)), 
+            position = position_dodge(width = 0.8), 
+            size = 3, 
+            vjust = -0.5,
+            color = "black") +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Rok",
+    y = "Redukcja w p.p.",
+    fill = "Grupa świadczeń"
+  )
+
+print(Skuteczność2Wykres)
+
+```
+
+## PearsonOgólneTabela
+
+```{r}
+PearsonSkrajneOgólne <- cor.test(WydatkiOgólne$`Wydatki na politykę społeczną`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneOgólne <- cor.test(WydatkiOgólne$`Wydatki na politykę społeczną`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweOgólne<- cor.test(WydatkiOgólne$`Wydatki na politykę społeczną`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonOgólne <- data.frame(
+  `Ubóstwo skrajne` = c(PearsonSkrajneOgólne$estimate, PearsonSkrajneOgólne$p.value, PearsonSkrajneOgólne$statistic),
+  `Ubóstwo relatywne` = c(PearsonRelatywneOgólne$estimate, PearsonRelatywneOgólne$p.value, PearsonRelatywneOgólne$statistic),
+  `Ubóstwo ustawowe` = c(PearsonUstawoweOgólne$estimate, PearsonUstawoweOgólne$p.value, PearsonUstawoweOgólne$statistic))
+
+rownames(PearsonOgólne) <- c('Wydatki na politykę społeczną', 'Wartość p','Statystyka t')
+
+PearsonOgólneTabela <- kable(PearsonOgólne, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+PearsonOgólneTabela
+
+``` 
+
+## Model Regresji: ubóstwo skrajne ogólne
+
+```{r}
+RegresjaOgólneSkrajne <- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiOgólne$`Wydatki na politykę społeczną`)
+
+r_SquaredSkrajneOgólne <- round(summary(RegresjaOgólneSkrajne)$r.squared, 4)
+p_ValueSkrajneOgólne <- round(summary(RegresjaOgólneSkrajne)$coefficients[2, 4], 4)
+
+RegresjaOgólneSkrajne
+```
+
+### RegresjaOgólneSkrajnewykres
+
+```{r}
+RegresjaOgólneSkrajnewykres <- ggplot(NULL, aes(x = WydatkiOgólne$`Wydatki na politykę społeczną`, y = Ubóstwo$`ubóstwo skrajne`)) +
+  geom_point(color = "blue", shape = 16, size = 3) +
+  coord_cartesian(xlim = c(min(WydatkiOgólne$`Wydatki na politykę społeczną`), max(WydatkiOgólne$`Wydatki na politykę społeczną`)), ylim = c(0, max(Ubóstwo$`ubóstwo skrajne`))) +
+  geom_abline(intercept = coef(RegresjaOgólneSkrajne)[1], slope = coef(RegresjaOgólneSkrajne)[2], color = "red", size = 1.5) +
+  labs(x = "Wydatki na politykę społeczną (w mld zł)",
+       y = "Zakres ubóstwa skrajnego (w %)") +
+  theme_stata() +
+  scale_fill_stata() +
+  scale_color_stata() +
+  geom_text(aes(x = max(WydatkiOgólne$`Wydatki na politykę społeczną`) - 0.01 * (max(WydatkiOgólne$`Wydatki na politykę społeczną`) - min(WydatkiOgólne$`Wydatki na politykę społeczną`)),
+                y = max(Ubóstwo$`ubóstwo skrajne`) - 0.01 * (max(Ubóstwo$`ubóstwo skrajne`) - min(Ubóstwo$`ubóstwo skrajne`)),
+                label = paste("Równanie regresji: y =", round(coef(RegresjaOgólneSkrajne)[1], 4), "+", round(coef(RegresjaOgólneSkrajne)[2], 4), "x\nWspółczynnik determinacji =", round(r_SquaredSkrajneOgólne, 4), "\nWartość p =", round(p_ValueSkrajneOgólne, 4))),
+            hjust = 1, vjust = 1, color = "black", size = 3)
+
+print(RegresjaOgólneSkrajnewykres)
+```
+
+### RegresjaOgólneSkrajnePodsumowanie
+
+```{r}
+RegresjaOgólneSkrajnePodsumowanie <- summary(RegresjaOgólneSkrajne)
+RegresjaOgólneSkrajneWyniki<- as.data.frame(RegresjaOgólneSkrajnePodsumowanie$coefficients)
+
+colnames(RegresjaOgólneSkrajneWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaOgólneSkrajneWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaOgólneSkrajneWynikiTabela <- kable(RegresjaOgólneSkrajneWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneSkrajneWynikiTabela
+
+summary(RegresjaOgólneSkrajne)
+```
+
+### RegresjaOgólneSkrajneOcena
+
+```{r}
+RegresjaOgólneSkrajneOcena <- as.data.frame(c(RegresjaOgólneSkrajnePodsumowanie$sigma, RegresjaOgólneSkrajnePodsumowanie$r.squared, RegresjaOgólneSkrajnePodsumowanie$fstatistic))
+RegresjaOgólneSkrajneOcena <- as.data.frame(t(RegresjaOgólneSkrajneOcena[0:3,]))
+
+colnames(RegresjaOgólneSkrajneOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaOgólneSkrajneOcena ) <- "Wartość"
+
+RegresjaOgólneSkrajneOcenaTabela <- kable(RegresjaOgólneSkrajneOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneSkrajneOcenaTabela
+```
+
+## Model Regresji: ubóstwo relatywne ogólne
+
+```{r}
+RegresjaOgólneRelatywne <- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiOgólne$`Wydatki na politykę społeczną`)
+
+r_SquaredRelatywneOgólne <- round(summary(RegresjaOgólneRelatywne)$r.squared, 4)
+p_ValueRelatywneOgólne <- round(summary(RegresjaOgólneRelatywne)$coefficients[2, 4], 4)
+```
+
+### RegresjaOgólneRelatywnewykres
+
+```{r}
+RegresjaOgólneRelatywnewykres <- ggplot(NULL, aes(x = WydatkiOgólne$`Wydatki na politykę społeczną`, y = Ubóstwo$`ubóstwo relatywne`)) +
+  geom_point(color = "blue", shape = 16, size = 3) +
+  coord_cartesian(xlim = c(min(WydatkiOgólne$`Wydatki na politykę społeczną`), max(WydatkiOgólne$`Wydatki na politykę społeczną`)), ylim = c(0, max(Ubóstwo$`ubóstwo relatywne`))) +
+  geom_abline(intercept = coef(RegresjaOgólneRelatywne)[1], slope = coef(RegresjaOgólneRelatywne)[2], color = "red", size = 1.5) +
+  labs(x = "Wydatki na politykę społeczną (w mld zł)",
+       y = "Zakres ubóstwa relatywnego (w %)") +
+  theme_stata() +
+  scale_fill_stata() +
+  scale_color_stata() +
+  geom_text(aes(x = max(WydatkiOgólne$`Wydatki na politykę społeczną`) - 0.01 * (max(WydatkiOgólne$`Wydatki na politykę społeczną`) - min(WydatkiOgólne$`Wydatki na politykę społeczną`)),
+                y = max(Ubóstwo$`ubóstwo relatywne`) - 0.01 * (max(Ubóstwo$`ubóstwo relatywne`) - min(Ubóstwo$`ubóstwo relatywne`)),
+                label = paste("Równanie regresji: y =", round(coef(RegresjaOgólneRelatywne)[1], 4), "+", round(coef(RegresjaOgólneRelatywne)[2], 4), "x\nWspółczynnik determinacji =", round(r_SquaredRelatywneOgólne, 4), "\nWartość p =", round(p_ValueRelatywneOgólne, 4))),
+            hjust = 1, vjust = 1, color = "black", size = 3)
+
+print(RegresjaOgólneRelatywnewykres)
+```
+
+### RegresjaOgólneRelatywnePodsumowanie
+
+```{r}
+RegresjaOgólneRelatywnePodsumowanie <- summary(RegresjaOgólneRelatywne)
+RegresjaOgólneRelatywneWyniki<- as.data.frame(RegresjaOgólneRelatywnePodsumowanie$coefficients)
+
+colnames(RegresjaOgólneRelatywneWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaOgólneRelatywneWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaOgólneRelatywneWynikiTabela <- kable(RegresjaOgólneRelatywneWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneRelatywneWynikiTabela
+summary(RegresjaOgólneRelatywne)
+```
+
+### RegresjaOgólneRelatywneOcena
+
+```{r}
+RegresjaOgólneRelatywneOcena <- as.data.frame(c(RegresjaOgólneRelatywnePodsumowanie$sigma, RegresjaOgólneRelatywnePodsumowanie$r.squared, RegresjaOgólneRelatywnePodsumowanie$fstatistic))
+RegresjaOgólneRelatywneOcena <- as.data.frame(t(RegresjaOgólneRelatywneOcena[0:3,]))
+
+colnames(RegresjaOgólneRelatywneOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaOgólneRelatywneOcena ) <- "Wartość"
+
+RegresjaOgólneRelatywneOcenaTabela <- kable(RegresjaOgólneRelatywneOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneRelatywneOcenaTabela
+```
+
+## Model Regresji: ubóstwo ustawowe ogólne
+
+```{r}
+RegresjaOgólneUstawowe <- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiOgólne$`Wydatki na politykę społeczną`)
+
+r_SquaredUstawoweOgólne <- round(summary(RegresjaOgólneUstawowe)$r.squared, 4)
+p_ValueUstawoweOgólne <- round(summary(RegresjaOgólneUstawowe)$coefficients[2, 4], 4)
+```
+
+### RegresjaOgólneUstawowewykres
+
+```{r}
+RegresjaOgólneUstawowewykres <- ggplot(NULL, aes(x = WydatkiOgólne$`Wydatki na politykę społeczną`, y = Ubóstwo$`ubóstwo ustawowe`)) +
+  geom_point(color = "blue", shape = 16, size = 3) +
+  coord_cartesian(xlim = c(min(WydatkiOgólne$`Wydatki na politykę społeczną`), max(WydatkiOgólne$`Wydatki na politykę społeczną`)), ylim = c(0, max(Ubóstwo$`ubóstwo ustawowe`))) +
+  geom_abline(intercept = coef(RegresjaOgólneUstawowe)[1], slope = coef(RegresjaOgólneUstawowe)[2], color = "red", size = 1.5) +
+  labs(x = "Wydatki na politykę społeczną (w mld zł)",
+       y = "Zakres ubóstwa ustawowego (w %)") +
+  theme_stata() +
+  scale_fill_stata() +
+  scale_color_stata() +
+  geom_text(aes(x = max(WydatkiOgólne$`Wydatki na politykę społeczną`) - 0.01 * (max(WydatkiOgólne$`Wydatki na politykę społeczną`) - min(WydatkiOgólne$`Wydatki na politykę społeczną`)),
+                y = max(Ubóstwo$`ubóstwo ustawowe`) - 0.01 * (max(Ubóstwo$`ubóstwo ustawowe`) - min(Ubóstwo$`ubóstwo ustawowe`)),
+                label = paste("Równanie regresji: y =", round(coef(RegresjaOgólneUstawowe)[1], 4), "+", round(coef(RegresjaOgólneUstawowe)[2], 4), "x\nWspółczynnik determinacji =", round(r_SquaredUstawoweOgólne, 4), "\nWartość p =", round(p_ValueUstawoweOgólne, 4))),
+            hjust = 1, vjust = 1, color = "black", size = 3)
+
+print(RegresjaOgólneUstawowewykres)
+```
+
+### RegresjaOgólneUstawowePodsumowanie
+
+```{r}
+RegresjaOgólneUstawowePodsumowanie <- summary(RegresjaOgólneUstawowe)
+RegresjaOgólneUstawoweWyniki<- as.data.frame(RegresjaOgólneUstawowePodsumowanie$coefficients)
+
+colnames(RegresjaOgólneUstawoweWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaOgólneUstawoweWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaOgólneUstawoweWynikiTabela <- kable(RegresjaOgólneUstawoweWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneUstawoweWynikiTabela
+summary(RegresjaOgólneUstawowe)
+```
+
+### RegresjaOgólneUstawoweOcena
+
+```{r}
+RegresjaOgólneUstawoweOcena <- as.data.frame(c(RegresjaOgólneUstawowePodsumowanie$sigma, RegresjaOgólneUstawowePodsumowanie$r.squared, RegresjaOgólneUstawowePodsumowanie$fstatistic))
+RegresjaOgólneUstawoweOcena <- as.data.frame(t(RegresjaOgólneUstawoweOcena[0:3,]))
+
+colnames(RegresjaOgólneUstawoweOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaOgólneUstawoweOcena ) <- "Wartość"
+
+RegresjaOgólneUstawoweOcenaTabela <- kable(RegresjaOgólneUstawoweOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneUstawoweOcenaTabela
+```
+## Model Regresji: sfera niedostatku ogólne
+
+```{r}
+RegresjaOgólneNiedostatku <- lm(Ubóstwo$`sfera niedostatku` ~ WydatkiOgólne$`Wydatki na politykę społeczną`)
+
+r_SquaredNiedostatkuOgólne <- round(summary(RegresjaOgólneNiedostatku)$r.squared, 4)
+p_ValueNiedostatkuOgólne <- round(summary(RegresjaOgólneNiedostatku)$coefficients[2, 4], 4)
+```
+
+### RegresjaOgólneNiedostatkuwykres
+
+```{r}
+RegresjaOgólneNiedostatkuwykres <- ggplot(NULL, aes(x = WydatkiOgólne$`Wydatki na politykę społeczną`, y = Ubóstwo$`sfera niedostatku`)) +
+  geom_point(color = "blue", shape = 16, size = 3) +
+  coord_cartesian(xlim = c(min(WydatkiOgólne$`Wydatki na politykę społeczną`), max(WydatkiOgólne$`Wydatki na politykę społeczną`)), ylim = c(0, max(Ubóstwo$`sfera niedostatku`))) +
+  geom_abline(intercept = coef(RegresjaOgólneNiedostatku)[1], slope = coef(RegresjaOgólneNiedostatku)[2], color = "red", size = 1.5) +
+  labs(x = "Wydatki na politykę społeczną (w mld zł)",
+       y = "Zakres sfery niedostatku (w %)") +
+  theme_stata() +
+  scale_fill_stata() +
+  scale_color_stata() +
+  geom_text(aes(x = max(WydatkiOgólne$`Wydatki na politykę społeczną`) - 0.01 * (max(WydatkiOgólne$`Wydatki na politykę społeczną`) - min(WydatkiOgólne$`Wydatki na politykę społeczną`)),
+                y = max(Ubóstwo$`sfera niedostatku`) - 0.01 * (max(Ubóstwo$`sfera niedostatku`) - min(Ubóstwo$`sfera niedostatku`)),
+                label = paste("Równanie regresji: y =", round(coef(RegresjaOgólneNiedostatku)[1], 4), "+", round(coef(RegresjaOgólneNiedostatku)[2], 4), "x\nWspółczynnik determinacji =", round(r_SquaredNiedostatkuOgólne, 4), "\nWartość p =", round(p_ValueNiedostatkuOgólne, 4))),
+            hjust = 1, vjust = 5, color = "black", size = 3)
+
+print(RegresjaOgólneNiedostatkuwykres)
+```
+
+### RegresjaOgólneNiedostatkuPodsumowanie
+
+```{r}
+RegresjaOgólneNiedostatkuPodsumowanie <- summary(RegresjaOgólneNiedostatku)
+RegresjaOgólneNiedostatkuWyniki<- as.data.frame(RegresjaOgólneNiedostatkuPodsumowanie$coefficients)
+
+colnames(RegresjaOgólneNiedostatkuWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaOgólneNiedostatkuWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaOgólneNiedostatkuWynikiTabela <- kable(RegresjaOgólneNiedostatkuWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneNiedostatkuWynikiTabela
+```
+
+### RegresjaOgólneNiedostatkuOcena
+
+```{r}
+RegresjaOgólneNiedostatkuOcena <- as.data.frame(c(RegresjaOgólneNiedostatkuPodsumowanie$sigma, RegresjaOgólneNiedostatkuPodsumowanie$r.squared, RegresjaOgólneNiedostatkuPodsumowanie$fstatistic))
+RegresjaOgólneNiedostatkuOcena <- as.data.frame(t(RegresjaOgólneNiedostatkuOcena[0:3,]))
+
+colnames(RegresjaOgólneNiedostatkuOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaOgólneNiedostatkuOcena ) <- "Wartość"
+
+RegresjaOgólneNiedostatkuOcenaTabela <- kable(RegresjaOgólneNiedostatkuOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaOgólneNiedostatkuOcenaTabela
+```
+
+## PearsonDziałyTabela
+
+```{r}
+PearsonSkrajnePomoc <- cor.test(WydatkiDziały$`Pomoc społeczna`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywnePomoc <- cor.test(WydatkiDziały$`Pomoc społeczna`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawowePomoc <- cor.test(WydatkiDziały$`Pomoc społeczna`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneUbezpieczenia <- cor.test(WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneUbezpieczenia <- cor.test(WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweUbezpieczenia <- cor.test(WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneRodzina <- cor.test(WydatkiDziały$`Rodzina`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneRodzina <- cor.test(WydatkiDziały$`Rodzina`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweRodzina <- cor.test(WydatkiDziały$`Rodzina`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajnePozostałe <- cor.test(WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywnePozostałe <- cor.test(WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawowePozostałe <- cor.test(WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonDziały <- data.frame(
+  `Ubóstwo skrajne` = c(PearsonSkrajnePomoc$estimate, PearsonSkrajneUbezpieczenia$estimate, PearsonSkrajneRodzina$estimate, PearsonSkrajnePozostałe$estimate),
+  `Ubóstwo relatywne` = c(PearsonRelatywnePomoc$estimate, PearsonRelatywneUbezpieczenia$estimate, PearsonRelatywneRodzina$estimate, PearsonRelatywnePozostałe$estimate),
+  `Ubóstwo ustawowe` = c(PearsonUstawowePomoc$estimate, PearsonUstawoweUbezpieczenia$estimate, PearsonUstawoweRodzina$estimate, PearsonUstawowePozostałe$estimate))
+
+rownames(PearsonDziały) <- c('Pomoc społeczna','Obowiązkowe ubezpieczenia społeczne','Rodzina', 'Pozostałe zadania w zakresie polityki społecznej')
+
+PearsonDziały <- PearsonDziały %>%
+  mutate(
+    `Ubóstwo.skrajne` = round(`Ubóstwo.skrajne`, 7),
+    `Ubóstwo.relatywne` = round(`Ubóstwo.relatywne`, 7),
+    `Ubóstwo.ustawowe` = round(`Ubóstwo.ustawowe`, 7)
+  )
+
+PearsonDziały <- PearsonDziały %>%
+  mutate(
+    `Ubóstwo.skrajne` = ifelse(row_number() %in% 2:4, paste0(`Ubóstwo.skrajne`, "*"), `Ubóstwo.skrajne`),
+    `Ubóstwo.relatywne` = ifelse(row_number() %in% 2:4, paste0(`Ubóstwo.relatywne`, "*"), `Ubóstwo.relatywne`)
+  )
+
+PearsonDziałyTabela <- kable(PearsonDziały, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+PearsonDziałyTabela
+
+
+``` 
+
+### Model regresji działy: ubóstwo skrajne
+
+```{r}
+RegresjaSkrajneDziały <- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiDziały$`Pomoc społeczna` + WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej` + WydatkiDziały$`Rodzina` + WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`)
+```
+
+vif(RegresjaSkrajneDziały)
+#### RegresjaSkrajneDziałPodsumowanie
+
+```{r}
+RegresjaSkrajneDziałyPodsumowanie <- summary(RegresjaSkrajneDziały)
+RegresjaSkrajneDziałyWyniki <- as.data.frame(RegresjaSkrajneDziałyPodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneDziałyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneDziałyWyniki) <- c("Wyraz wolny", "Pomoc społeczna", "Pozostałe zadania w zakresie polityki społecznej", "Rodzina", "Obowiązkowe ubezpieczenia społeczne")
+
+RegresjaSkrajneDziałyWynikiTabela <- kable(RegresjaSkrajneDziałyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneDziałyWynikiTabela
+summary(RegresjaSkrajneDziały)
+```
+
+#### RegresjaSkrajneDziałyOcena
+
+```{r}
+
+RegresjaSkrajneDziałyOcena <- as.data.frame(c(RegresjaSkrajneDziałyPodsumowanie$sigma, RegresjaSkrajneDziałyPodsumowanie$r.squared, RegresjaSkrajneDziałyPodsumowanie$fstatistic))
+RegresjaSkrajneDziałyOcena <- as.data.frame(t(RegresjaSkrajneDziałyOcena[0:3,]))
+
+colnames(RegresjaSkrajneDziałyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneDziałyOcena ) <- "Wartość"
+
+RegresjaSkrajneDziałyOcenaTabela <- kable(RegresjaSkrajneDziałyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneDziałyOcenaTabela
+```
+
+
+### Model regresji działy: ubóstwo relatywne
+
+```{r}
+RegresjaRelatywneDziały <- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiDziały$`Pomoc społeczna` + WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej` + WydatkiDziały$`Rodzina` + WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`)
+```
+
+vif(RegresjaRelatywneDziały)
+#### RegresjaRelatywneDziałypodsumowanie
+
+```{r}
+RegresjaRelatywneDziałyPodsumowanie <- summary(RegresjaRelatywneDziały)
+RegresjaRelatywneDziałyWyniki <- as.data.frame(RegresjaRelatywneDziałyPodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneDziałyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneDziałyWyniki) <- c("Wyraz wolny", "Pomoc społeczna", "Pozostałe zadania w zakresie polityki społecznej", "Rodzina", "Obowiązkowe ubezpieczenia społeczne")
+
+RegresjaRelatywneDziałyWynikiTabela <- kable(RegresjaRelatywneDziałyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneDziałyWynikiTabela
+summary(RegresjaRelatywneDziały)
+```
+
+#### RegresjaRelatywneDziałyOcena
+
+```{r}
+RegresjaRelatywneDziałyOcena <- as.data.frame(c(RegresjaRelatywneDziałyPodsumowanie$sigma, RegresjaRelatywneDziałyPodsumowanie$r.squared, RegresjaRelatywneDziałyPodsumowanie$fstatistic))
+RegresjaRelatywneDziałyOcena <- as.data.frame(t(RegresjaRelatywneDziałyOcena[0:3,]))
+
+colnames(RegresjaRelatywneDziałyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneDziałyOcena ) <- "Wartość"
+
+RegresjaRelatywneDziałyOcenaTabela <- kable(RegresjaRelatywneDziałyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneDziałyOcenaTabela
+```
+
+### Model regresji działy: ubóstwo Ustawowe
+
+```{r}
+RegresjaUstawoweDziały <- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiDziały$`Pomoc społeczna` + WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej` + WydatkiDziały$`Rodzina` + WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`)
+```
+
+vif(RegresjaUstawoweDziały)
+#### RegresjaUstawoweDziałypodsumowanie
+
+```{r}
+RegresjaUstawoweDziałyPodsumowanie <- summary(RegresjaUstawoweDziały)
+RegresjaUstawoweDziałyWyniki <- as.data.frame(RegresjaUstawoweDziałyPodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweDziałyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweDziałyWyniki) <- c("Wyraz wolny", "Pomoc społeczna", "Pozostałe zadania w zakresie polityki społecznej", "Rodzina", "Obowiązkowe ubezpieczenia społeczne")
+
+RegresjaUstawoweDziałyWynikiTabela <- kable(RegresjaUstawoweDziałyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweDziałyWynikiTabela
+summary(RegresjaUstawoweDziały)
+```
+
+#### RegresjaUstawoweDziałyOcena
+
+```{r}
+RegresjaUstawoweDziałyOcena <- as.data.frame(c(RegresjaUstawoweDziałyPodsumowanie$sigma, RegresjaUstawoweDziałyPodsumowanie$r.squared, RegresjaUstawoweDziałyPodsumowanie$fstatistic))
+RegresjaUstawoweDziałyOcena <- as.data.frame(t(RegresjaUstawoweDziałyOcena[0:3,]))
+
+colnames(RegresjaUstawoweDziałyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweDziałyOcena ) <- "Wartość"
+
+RegresjaUstawoweDziałyOcenaTabela <- kable(RegresjaUstawoweDziałyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweDziałyOcenaTabela
+```
+
+### Model regresji działy: Sfera Niedostatku
+
+```{r}
+RegresjaNiedostatkuDziały <- lm(Ubóstwo$`sfera niedostatku` ~ WydatkiDziały$`Pomoc społeczna` + WydatkiDziały$`Pozostałe zadania w zakresie polityki społecznej` + WydatkiDziały$`Rodzina` + WydatkiDziały$`Obowiązkowe ubezpieczenia społeczne`)
+```
+
+#### RegresjaNiedostatkuDziałypodsumowanie
+
+```{r}
+RegresjaNiedostatkuDziałyPodsumowanie <- summary(RegresjaNiedostatkuDziały)
+RegresjaNiedostatkuDziałyWyniki <- as.data.frame(RegresjaNiedostatkuDziałyPodsumowanie$coefficients)
+
+colnames(RegresjaNiedostatkuDziałyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaNiedostatkuDziałyWyniki) <- c("Wyraz wolny", "Pomoc społeczna", "Pozostałe zadania w zakresie polityki społecznej", "Rodzina", "Obowiązkowe ubezpieczenia społeczne")
+
+RegresjaNiedostatkuDziałyWynikiTabela <- kable(RegresjaNiedostatkuDziałyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaNiedostatkuDziałyWynikiTabela
+```
+
+#### RegresjaNiedostatkuDziałyOcena
+
+```{r}
+RegresjaNiedostatkuDziałyOcena <- as.data.frame(c(RegresjaNiedostatkuDziałyPodsumowanie$sigma, RegresjaNiedostatkuDziałyPodsumowanie$r.squared, RegresjaNiedostatkuDziałyPodsumowanie$fstatistic))
+RegresjaNiedostatkuDziałyOcena <- as.data.frame(t(RegresjaNiedostatkuDziałyOcena[0:3,]))
+
+colnames(RegresjaNiedostatkuDziałyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaNiedostatkuDziałyOcena ) <- "Wartość"
+
+RegresjaNiedostatkuDziałyOcenaTabela <- kable(RegresjaNiedostatkuDziałyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaNiedostatkuDziałyOcenaTabela
+```
+
+## PearsonCzęściTabela
+
+```{r}
+PearsonSkrajneBudżety <- cor.test(WydatkiCzęści$`Budżety wojewodów`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneBudżety <- cor.test(WydatkiCzęści$`Budżety wojewodów`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweBudżety <- cor.test(WydatkiCzęści$`Budżety wojewodów`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneZUS <- cor.test(WydatkiCzęści$`ZUS`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneZUS <- cor.test(WydatkiCzęści$`ZUS`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweZUS <- cor.test(WydatkiCzęści$`ZUS`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+
+PearsonSkrajneZabezpieczenia <- cor.test(WydatkiCzęści$`Zabezpieczenie społeczne`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneZabezpieczenia <- cor.test(WydatkiCzęści$`Zabezpieczenie społeczne`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweZabezpieczenia <- cor.test(WydatkiCzęści$`Zabezpieczenie społeczne`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajnePraca <- cor.test(WydatkiCzęści$`Praca`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywnePraca <- cor.test(WydatkiCzęści$`Praca`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawowePraca <- cor.test(WydatkiCzęści$`Praca`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneSprawy <- cor.test(WydatkiCzęści$`Sprawy wewnętrzne`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneSprawy <- cor.test(WydatkiCzęści$`Sprawy wewnętrzne`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweSprawy <- cor.test(WydatkiCzęści$`Sprawy wewnętrzne`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneObrona <- cor.test(WydatkiCzęści$`Obrona Narodowa`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneObrona <- cor.test(WydatkiCzęści$`Obrona Narodowa`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweObrona <- cor.test(WydatkiCzęści$`Obrona Narodowa`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+
+PearsonSkrajneSprawiedliwość <- cor.test(WydatkiCzęści$`Sprawiedliwość`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneSprawiedliwość <- cor.test(WydatkiCzęści$`Sprawiedliwość`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweSprawiedliwość <- cor.test(WydatkiCzęści$`Sprawiedliwość`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneKRUS <- cor.test(WydatkiCzęści$`KRUS`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneKRUS <- cor.test(WydatkiCzęści$`KRUS`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweKRUS <- cor.test(WydatkiCzęści$`KRUS`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonCzęści <- data.frame(
+  `Ubóstwo skrajne` = c(PearsonSkrajneBudżety$estimate, PearsonSkrajneZUS$estimate, PearsonSkrajneZabezpieczenia$estimate, PearsonSkrajnePraca$estimate, PearsonSkrajneSprawy$estimate, PearsonSkrajneObrona$estimate, PearsonSkrajneSprawiedliwość$estimate, PearsonSkrajneKRUS$estimate),
+  `Ubóstwo relatywne` = c(PearsonRelatywneBudżety$estimate, PearsonRelatywneZUS$estimate, PearsonRelatywneZabezpieczenia$estimate, PearsonRelatywnePraca$estimate, PearsonRelatywneSprawy$estimate, PearsonRelatywneObrona$estimate, PearsonRelatywneSprawiedliwość$estimate, PearsonRelatywneKRUS$estimate),
+  `Ubóstwo ustawowe` = c(PearsonUstawoweBudżety$estimate, PearsonUstawoweZUS$estimate, PearsonUstawoweZabezpieczenia$estimate, PearsonUstawowePraca$estimate, PearsonUstawoweSprawy$estimate, PearsonUstawoweObrona$estimate, PearsonUstawoweSprawiedliwość$estimate, PearsonUstawoweKRUS$estimate)
+)
+
+PearsonCzęści <- PearsonCzęści %>%
+  mutate(
+    `Ubóstwo.skrajne` = round(`Ubóstwo.skrajne`, 7),
+    `Ubóstwo.relatywne` = round(`Ubóstwo.relatywne`, 7),
+    `Ubóstwo.ustawowe` = round(`Ubóstwo.ustawowe`, 7)
+  )
+
+PearsonCzęści <- PearsonCzęści %>%
+  mutate(
+    `Ubóstwo.relatywne` = paste0(`Ubóstwo.relatywne`, "*"),
+    `Ubóstwo.skrajne` = case_when(
+      row_number() %in% c(3, 6) ~ as.character(`Ubóstwo.skrajne`), 
+      TRUE ~ paste0(`Ubóstwo.skrajne`, "*")
+    ),
+
+  )
+  
+rownames(PearsonCzęści) <- c('Budżety wojewodów ','ZUS','Zabezpieczenie społeczne
+', 'Praca', 'Sprawy wewnętrzne', 'Obrona Narodowa', "Sprawiedliwość", "KRUS"
+)
+
+PearsonCzęściTabela <- kable(PearsonCzęści, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+PearsonCzęściTabela
+``` 
+
+### Model regresji części: ubóstwo skrajne
+
+```{r}
+RegresjaSkrajneCzęści <- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiCzęści$`Budżety wojewodów` + WydatkiCzęści$`ZUS` + WydatkiCzęści$`Zabezpieczenie społeczne` + WydatkiCzęści$`Praca` + WydatkiCzęści$`Odrębne systemy emerytalne` )
+```
+
+vif(RegresjaSkrajneCzęści)
+#### RegresjaSkrajneCzęściPodsumowanie
+
+```{r}
+RegresjaSkrajneCzęściPodsumowanie <- summary(RegresjaSkrajneCzęści)
+RegresjaSkrajneCzęściWyniki <- as.data.frame(RegresjaSkrajneCzęściPodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneCzęściWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneCzęściWyniki) <- c("Wyraz wolny", "Budżety wojewodów", "ZUS", "Zabezpieczenie społeczne", "Praca", "Odrębne systemy emerytalne")
+
+RegresjaSkrajneCzęściWynikiTabela <- kable(RegresjaSkrajneCzęściWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneCzęściWynikiTabela
+```
+
+#### RegresjaSkrajneCzęściOcena
+
+```{r}
+
+RegresjaSkrajneCzęściOcena <- as.data.frame(c(RegresjaSkrajneCzęściPodsumowanie$sigma, RegresjaSkrajneCzęściPodsumowanie$r.squared, RegresjaSkrajneCzęściPodsumowanie$fstatistic))
+RegresjaSkrajneCzęściOcena <- as.data.frame(t(RegresjaSkrajneCzęściOcena[0:3,]))
+
+colnames(RegresjaSkrajneCzęściOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneCzęściOcena ) <- "Wartość"
+
+RegresjaSkrajneCzęściOcenaTabela <- kable(RegresjaSkrajneCzęściOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneCzęściOcenaTabela
+```
+
+### Model regresji części: ubóstwo Relatywne
+
+```{r}
+RegresjaRelatywneCzęści <- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiCzęści$`Budżety wojewodów` + WydatkiCzęści$`ZUS` + WydatkiCzęści$`Zabezpieczenie społeczne` + WydatkiCzęści$`Praca` + WydatkiCzęści$`Odrębne systemy emerytalne` )
+```
+
+vif(RegresjaRelatywneCzęści)
+#### RegresjaRelatywneCzęściPodsumowanie
+
+```{r}
+RegresjaRelatywneCzęściPodsumowanie <- summary(RegresjaRelatywneCzęści)
+RegresjaRelatywneCzęściWyniki <- as.data.frame(RegresjaRelatywneCzęściPodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneCzęściWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneCzęściWyniki) <- c("Wyraz wolny", "Budżety wojewodów", "ZUS", "Zabezpieczenie społeczne", "Praca", "Odrębne systemy emerytalne")
+
+RegresjaRelatywneCzęściWynikiTabela <- kable(RegresjaRelatywneCzęściWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneCzęściWynikiTabela
+summary(RegresjaRelatywneCzęści)
+```
+
+#### RegresjaRelatywneCzęściOcena
+
+```{r}
+
+RegresjaRelatywneCzęściOcena <- as.data.frame(c(RegresjaRelatywneCzęściPodsumowanie$sigma, RegresjaRelatywneCzęściPodsumowanie$r.squared, RegresjaRelatywneCzęściPodsumowanie$fstatistic))
+RegresjaRelatywneCzęściOcena <- as.data.frame(t(RegresjaRelatywneCzęściOcena[0:3,]))
+
+colnames(RegresjaRelatywneCzęściOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneCzęściOcena ) <- "Wartość"
+
+RegresjaRelatywneCzęściOcenaTabela <- kable(RegresjaRelatywneCzęściOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneCzęściOcenaTabela
+```
+
+### Model regresji części: ubóstwo Ustawowe
+
+```{r}
+RegresjaUstawoweCzęści <- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiCzęści$`Budżety wojewodów` + WydatkiCzęści$`ZUS` + WydatkiCzęści$`Zabezpieczenie społeczne` + WydatkiCzęści$`Praca` + WydatkiCzęści$`Odrębne systemy emerytalne` )
+```
+
+vif(RegresjaUstawoweCzęści)
+#### RegresjaUstawoweCzęściPodsumowanie
+
+```{r}
+RegresjaUstawoweCzęściPodsumowanie <- summary(RegresjaUstawoweCzęści)
+RegresjaUstawoweCzęściWyniki <- as.data.frame(RegresjaUstawoweCzęściPodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweCzęściWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweCzęściWyniki) <- c("Wyraz wolny", "Budżety wojewodów", "ZUS", "Zabezpieczenie społeczne", "Praca", "Odrębne systemy emerytalne")
+
+RegresjaUstawoweCzęściWynikiTabela <- kable(RegresjaUstawoweCzęściWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweCzęściWynikiTabela
+summary(RegresjaUstawoweCzęści)
+```
+
+#### RegresjaUstawoweCzęściOcena
+
+```{r}
+
+RegresjaUstawoweCzęściOcena <- as.data.frame(c(RegresjaUstawoweCzęściPodsumowanie$sigma, RegresjaUstawoweCzęściPodsumowanie$r.squared, RegresjaUstawoweCzęściPodsumowanie$fstatistic))
+RegresjaUstawoweCzęściOcena <- as.data.frame(t(RegresjaUstawoweCzęściOcena[0:3,]))
+
+colnames(RegresjaUstawoweCzęściOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweCzęściOcena ) <- "Wartość"
+
+RegresjaUstawoweCzęściOcenaTabela <- kable(RegresjaUstawoweCzęściOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweCzęściOcenaTabela
+```
+
+## PearsonFunduszeTabela
+
+```{r}
+PearsonSkrajneFUS <- cor.test(WydatkiFundusze$`FUS`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneFUS <- cor.test(WydatkiFundusze$`FUS`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweFUS <- cor.test(WydatkiFundusze$`FUS`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneFER <- cor.test(WydatkiFundusze$`FER`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneFER <- cor.test(WydatkiFundusze$`FER`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweFER <- cor.test(WydatkiFundusze$`FER`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneFP <- cor.test(WydatkiFundusze$`FP`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneFP <- cor.test(WydatkiFundusze$`FP`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweFP <- cor.test(WydatkiFundusze$`FP`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneFS <- cor.test(WydatkiFundusze$`FS`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneFS <- cor.test(WydatkiFundusze$`FS`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweFS <- cor.test(WydatkiFundusze$`FS`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+
+PearsonFundusze <- data.frame(
+  `Ubóstwo skrajne` = c(PearsonSkrajneFUS$estimate, PearsonSkrajneFER$estimate, PearsonSkrajneFP$estimate, PearsonSkrajneFS$estimate),
+  `Ubóstwo relatywne` = c(PearsonRelatywneFUS$estimate, PearsonRelatywneFER$estimate, PearsonRelatywneFP$estimate, PearsonRelatywneFS$estimate),
+  `Ubóstwo ustawowe` = c(PearsonUstawoweFUS$estimate, PearsonUstawoweFER$estimate, PearsonUstawoweFP$estimate, PearsonUstawoweFS$estimate)
+
+)
+
+PearsonFundusze <- PearsonFundusze %>%
+  mutate(
+    `Ubóstwo.skrajne` = round(`Ubóstwo.skrajne`, 7),
+    `Ubóstwo.relatywne` = round(`Ubóstwo.relatywne`, 7),
+    `Ubóstwo.ustawowe` = round(`Ubóstwo.ustawowe`, 7)
+  )
+
+PearsonFundusze <- PearsonFundusze %>%
+  mutate(
+    `Ubóstwo.relatywne` = case_when(
+      row_number() %in% 3 ~ as.character(`Ubóstwo.relatywne`), 
+      TRUE ~ paste0(`Ubóstwo.relatywne`, "*")),
+    `Ubóstwo.skrajne` = case_when(
+      row_number() %in% 3 ~ as.character(`Ubóstwo.skrajne`), 
+      TRUE ~ paste0(`Ubóstwo.skrajne`, "*")
+    ))
+
+
+rownames(PearsonFundusze) <- c('FUS','FER','FP', 'FS')
+
+PearsonFunduszeTabela <- kable(PearsonFundusze, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+PearsonFunduszeTabela
+``` 
+
+### Model regresji Fundusze: ubóstwo skrajne
+
+```{r}
+RegresjaSkrajneFundusze <- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiFundusze$`FUS i FER` + WydatkiFundusze$`FP` + WydatkiFundusze$`FS`)
+```
+
+vif(RegresjaSkrajneFundusze)
+cor(WydatkiFundusze$`FUS`, WydatkiFundusze$`FER`)
+#### RegresjaSkrajneFunduszePodsumowanie
+
+```{r}
+RegresjaSkrajneFunduszePodsumowanie <- summary(RegresjaSkrajneFundusze)
+RegresjaSkrajneFunduszeWyniki <- as.data.frame(RegresjaSkrajneFunduszePodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneFunduszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneFunduszeWyniki) <- c("Wyraz wolny", "FUS i FER", "FP", "FS")
+
+RegresjaSkrajneFunduszeWynikiTabela <- kable(RegresjaSkrajneFunduszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneFunduszeWynikiTabela
+summary(RegresjaSkrajneFundusze)
+```
+
+#### RegresjaSkrajneFunduszeOcena
+
+```{r}
+
+RegresjaSkrajneFunduszeOcena <- as.data.frame(c(RegresjaSkrajneFunduszePodsumowanie$sigma, RegresjaSkrajneFunduszePodsumowanie$r.squared, RegresjaSkrajneFunduszePodsumowanie$fstatistic))
+RegresjaSkrajneFunduszeOcena <- as.data.frame(t(RegresjaSkrajneFunduszeOcena[0:3,]))
+
+colnames(RegresjaSkrajneFunduszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneFunduszeOcena ) <- "Wartość"
+
+RegresjaSkrajneFunduszeOcenaTabela <- kable(RegresjaSkrajneFunduszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneFunduszeOcenaTabela
+```
+
+
+### Model regresji Fundusze: ubóstwo relatywne
+
+```{r}
+RegresjaRelatywneFundusze <- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiFundusze$`FUS i FER` + WydatkiFundusze$`FP` + WydatkiFundusze$`FS`)
+```
+
+vif(RegresjaRelatywneFundusze)
+#### RegresjaRelatywneFunduszepodsumowanie
+
+```{r}
+RegresjaRelatywneFunduszePodsumowanie <- summary(RegresjaRelatywneFundusze)
+RegresjaRelatywneFunduszeWyniki <- as.data.frame(RegresjaRelatywneFunduszePodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneFunduszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneFunduszeWyniki) <- c("Wyraz wolny", "FUS i FER", "FP", "FS")
+
+RegresjaRelatywneFunduszeWynikiTabela <- kable(RegresjaRelatywneFunduszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneFunduszeWynikiTabela
+summary(RegresjaRelatywneFundusze)
+```
+
+#### RegresjaRelatywneFunduszeOcena
+
+```{r}
+RegresjaRelatywneFunduszeOcena <- as.data.frame(c(RegresjaRelatywneFunduszePodsumowanie$sigma, RegresjaRelatywneFunduszePodsumowanie$r.squared, RegresjaRelatywneFunduszePodsumowanie$fstatistic))
+RegresjaRelatywneFunduszeOcena <- as.data.frame(t(RegresjaRelatywneFunduszeOcena[0:3,]))
+
+colnames(RegresjaRelatywneFunduszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneFunduszeOcena ) <- "Wartość"
+
+RegresjaRelatywneFunduszeOcenaTabela <- kable(RegresjaRelatywneFunduszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneFunduszeOcenaTabela
+```
+
+### Model regresji Fundusze: ubóstwo Ustawowe
+
+```{r}
+RegresjaUstawoweFundusze <- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiFundusze$`FUS i FER` + WydatkiFundusze$`FP` + WydatkiFundusze$`FS`)
+```
+
+vif(RegresjaUstawoweFundusze)
+#### RegresjaUstawoweFunduszepodsumowanie
+
+```{r}
+RegresjaUstawoweFunduszePodsumowanie <- summary(RegresjaUstawoweFundusze)
+RegresjaUstawoweFunduszeWyniki <- as.data.frame(RegresjaUstawoweFunduszePodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweFunduszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweFunduszeWyniki) <- c("Wyraz wolny", "FUS i FER", "FP", "FS")
+
+RegresjaUstawoweFunduszeWynikiTabela <- kable(RegresjaUstawoweFunduszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweFunduszeWynikiTabela
+summary(RegresjaUstawoweFundusze)
+```
+
+#### RegresjaUstawoweFunduszeOcena
+
+```{r}
+RegresjaUstawoweFunduszeOcena <- as.data.frame(c(RegresjaUstawoweFunduszePodsumowanie$sigma, RegresjaUstawoweFunduszePodsumowanie$r.squared, RegresjaUstawoweFunduszePodsumowanie$fstatistic))
+RegresjaUstawoweFunduszeOcena <- as.data.frame(t(RegresjaUstawoweFunduszeOcena[0:3,]))
+
+colnames(RegresjaUstawoweFunduszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweFunduszeOcena ) <- "Wartość"
+
+RegresjaUstawoweFunduszeOcenaTabela <- kable(RegresjaUstawoweFunduszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweFunduszeOcenaTabela
+```
+
+# PearsonNajważniejszeTabela
+
+```{r}
+PearsonSkrajneWychowawcze <- cor.test(WydatkiNajważniejsze$`Świadczenie wychowawcze`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneWychowawcze<- cor.test(WydatkiNajważniejsze$`Świadczenie wychowawcze`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweWychowawcze <- cor.test(WydatkiNajważniejsze$`Świadczenie wychowawcze`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneRodzinne<- cor.test(WydatkiNajważniejsze$`Świadczenia rodzinne`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneRodzinne<- cor.test(WydatkiNajważniejsze$`Świadczenia rodzinne`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweRodzinne<- cor.test(WydatkiNajważniejsze$`Świadczenia rodzinne`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneZlecone <- cor.test(WydatkiNajważniejsze$`Świadczenia zlecone ZUS`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneZlecone <- cor.test(WydatkiNajważniejsze$`Świadczenia zlecone ZUS`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweZlecone <- cor.test(WydatkiNajważniejsze$`Świadczenia zlecone ZUS`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneRentsoc <- cor.test(WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneRentsoc <- cor.test(WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweRentsoc <- cor.test(WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneRenty <- cor.test(WydatkiNajważniejsze$`Renty`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneRenty <- cor.test(WydatkiNajważniejsze$`Renty`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweRenty <- cor.test(WydatkiNajważniejsze$`Renty`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneChorobowe <- cor.test(WydatkiNajważniejsze$`Zasiłki chorobowe`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneChorobowe <- cor.test(WydatkiNajważniejsze$`Zasiłki chorobowe`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweChorobowe <- cor.test(WydatkiNajważniejsze$`Zasiłki chorobowe`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneMacierzyńskie <- cor.test(WydatkiNajważniejsze$`Zasiłki macierzyńskie`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneMacierzyńskie <- cor.test(WydatkiNajważniejsze$`Zasiłki macierzyńskie`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweMacierzyńskie <- cor.test(WydatkiNajważniejsze$`Zasiłki macierzyńskie`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonSkrajneRolnicze <- cor.test(WydatkiNajważniejsze$`Emerytury i renty rolnicze`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneRolnicze <- cor.test(WydatkiNajważniejsze$`Emerytury i renty rolnicze`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweRolnicze <- cor.test(WydatkiNajważniejsze$`Emerytury i renty rolnicze`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneEmerytury <- cor.test(WydatkiNajważniejsze$`Emerytury`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneEmerytury <- cor.test(WydatkiNajważniejsze$`Emerytury`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweEmerytury <- cor.test(WydatkiNajważniejsze$`Emerytury`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneBezrobotni <- cor.test(WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonRelatywneBezrobotni <- cor.test(WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "pearson")
+PearsonUstawoweBezrobotni <- cor.test(WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "pearson")
+
+PearsonSkrajneAktywne <- cor.test(WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`, Ubóstwo$`ubóstwo skrajne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonRelatywneAktywne <- cor.test(WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`, Ubóstwo$`ubóstwo relatywne`, alternative = "less", conf.level = 0.95, method = "spearman")
+PearsonUstawoweAktywne <- cor.test(WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`, Ubóstwo$`ubóstwo ustawowe`, alternative = "less", conf.level = 0.95, method = "spearman")
+
+PearsonNajważniejsze <- data.frame(
+  `Ubóstwo skrajne` = c(PearsonSkrajneWychowawcze$estimate, PearsonSkrajneRodzinne$estimate, PearsonSkrajneZlecone$estimate, PearsonSkrajneRentsoc$estimate, PearsonSkrajneRenty$estimate, PearsonSkrajneChorobowe$estimate, PearsonSkrajneMacierzyńskie$estimate, PearsonSkrajneRolnicze$estimate, PearsonSkrajneEmerytury$estimate, PearsonSkrajneBezrobotni$estimate, PearsonSkrajneAktywne$estimate),
+   `Ubóstwo relatywne` = c(PearsonRelatywneWychowawcze$estimate, PearsonRelatywneRodzinne$estimate, PearsonRelatywneZlecone$estimate, PearsonRelatywneRentsoc$estimate, PearsonRelatywneRenty$estimate, PearsonRelatywneChorobowe$estimate, PearsonRelatywneMacierzyńskie$estimate, PearsonRelatywneRolnicze$estimate, PearsonRelatywneEmerytury$estimate, PearsonRelatywneBezrobotni$estimate, PearsonRelatywneAktywne$estimate),
+   `Ubóstwo ustawowe` = c(PearsonUstawoweWychowawcze$estimate, PearsonUstawoweRodzinne$estimate, PearsonUstawoweZlecone$estimate, PearsonUstawoweRentsoc$estimate, PearsonUstawoweRenty$estimate, PearsonUstawoweChorobowe$estimate, PearsonUstawoweMacierzyńskie$estimate, PearsonUstawoweRolnicze$estimate, PearsonUstawoweEmerytury$estimate, PearsonUstawoweBezrobotni$estimate, PearsonUstawoweAktywne$estimate))
+
+PearsonNajważniejsze <- PearsonNajważniejsze %>%
+  mutate(
+    `Ubóstwo.skrajne` = round(`Ubóstwo.skrajne`, 7),
+    `Ubóstwo.relatywne` = round(`Ubóstwo.relatywne`, 7),
+    `Ubóstwo.ustawowe` = round(`Ubóstwo.ustawowe`, 7)
+  )
+
+PearsonNajważniejsze <- PearsonNajważniejsze %>%
+  mutate(
+    `Ubóstwo.skrajne` = case_when(
+      row_number() %in% c(3,4,5,10,11) ~ as.character(`Ubóstwo.skrajne`), 
+      TRUE ~ paste0(`Ubóstwo.skrajne`, "*")),
+    `Ubóstwo.relatywne` = case_when(
+      row_number() %in% c(3,4,10,11) ~ as.character(`Ubóstwo.relatywne`), 
+      TRUE ~ paste0(`Ubóstwo.relatywne`, "*")),
+      `Ubóstwo.ustawowe` = case_when(
+      row_number() %in% c(1,2,4,5,6,7,8,9,10,11) ~ as.character(`Ubóstwo.ustawowe`), 
+      TRUE ~ paste0(`Ubóstwo.ustawowe`, "*"))
+    )
+
+rownames(PearsonNajważniejsze) <- c('Świadczenie wychowawcze','Świadczenia rodzinne','Świadczenia zlecone ZUS', ' Renta socjalna i świadczenia przedemerytalne 
+', 'Renty', 'Zasiłki chorobowe', 'Zasiłki macierzyńskie', 'Emerytury i renty rolnicze', 'Emerytury', 'Zasiłki dla bezrobotnych', 'Aktywne formy przeciwdziałania bezrobociu')
+
+PearsonNajważniejszeTabela <- kable(PearsonNajważniejsze, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+PearsonNajważniejszeTabela
+``` 
+
+### Model regresji Najważniejsze: ubóstwo skrajne
+
+```{r}
+RegresjaSkrajneNajważniejsze <- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiNajważniejsze$`Świadczenia zlecone ZUS`+ WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`+ WydatkiNajważniejsze$Renty+ WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`+ WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`)
+```
+
+vif(RegresjaSkrajneNajważniejsze)
+
+
+#### RegresjaSkrajneNajważniejszePodsumowanie
+
+```{r}
+RegresjaSkrajneNajważniejszePodsumowanie <- summary(RegresjaSkrajneNajważniejsze)
+RegresjaSkrajneNajważniejszeWyniki <- as.data.frame(RegresjaSkrajneNajważniejszePodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneNajważniejszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneNajważniejszeWyniki) <- c("Wyraz wolny", "Świadczenia zlecone ZUS", "Renta socjalna i świadczenia przedemerytalne","Renty", "Zasiłki dla bezrobotnych", "Aktywne formy przeciwdziałania bezrobociu")
+
+RegresjaSkrajneNajważniejszeWynikiTabela <- kable(RegresjaSkrajneNajważniejszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneNajważniejszeWynikiTabela
+summary(RegresjaSkrajneNajważniejsze)
+```
+
+#### RegresjaSkrajneNajważniejszeOcena
+
+```{r}
+
+RegresjaSkrajneNajważniejszeOcena <- as.data.frame(c(RegresjaSkrajneNajważniejszePodsumowanie$sigma, RegresjaSkrajneNajważniejszePodsumowanie$r.squared, RegresjaSkrajneNajważniejszePodsumowanie$fstatistic))
+RegresjaSkrajneNajważniejszeOcena <- as.data.frame(t(RegresjaSkrajneNajważniejszeOcena[0:3,]))
+
+colnames(RegresjaSkrajneNajważniejszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneNajważniejszeOcena ) <- "Wartość"
+
+RegresjaSkrajneNajważniejszeOcenaTabela <- kable(RegresjaSkrajneNajważniejszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneNajważniejszeOcenaTabela
+```
+
+### Model regresji Najważniejsze: ubóstwo Relatywne
+
+```{r}
+RegresjaRelatywneNajważniejsze <- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiNajważniejsze$`Świadczenia zlecone ZUS`+ WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`+ WydatkiNajważniejsze$Renty+ WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`+ WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`)
+```
+
+vif(RegresjaRelatywneNajważniejsze)
+
+
+#### RegresjaRelatywneNajważniejszePodsumowanie
+
+```{r}
+RegresjaRelatywneNajważniejszePodsumowanie <- summary(RegresjaRelatywneNajważniejsze)
+RegresjaRelatywneNajważniejszeWyniki <- as.data.frame(RegresjaRelatywneNajważniejszePodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneNajważniejszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneNajważniejszeWyniki) <- c("Wyraz wolny", "Świadczenia zlecone ZUS", "Renta socjalna i świadczenia przedemerytalne","Renty", "Zasiłki dla bezrobotnych", "Aktywne formy przeciwdziałania bezrobociu")
+
+RegresjaRelatywneNajważniejszeWynikiTabela <- kable(RegresjaRelatywneNajważniejszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneNajważniejszeWynikiTabela
+summary(RegresjaRelatywneNajważniejsze)
+```
+
+#### RegresjaRelatywneNajważniejszeOcena
+
+```{r}
+
+RegresjaRelatywneNajważniejszeOcena <- as.data.frame(c(RegresjaRelatywneNajważniejszePodsumowanie$sigma, RegresjaRelatywneNajważniejszePodsumowanie$r.squared, RegresjaRelatywneNajważniejszePodsumowanie$fstatistic))
+RegresjaRelatywneNajważniejszeOcena <- as.data.frame(t(RegresjaRelatywneNajważniejszeOcena[0:3,]))
+
+colnames(RegresjaRelatywneNajważniejszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneNajważniejszeOcena ) <- "Wartość"
+
+RegresjaRelatywneNajważniejszeOcenaTabela <- kable(RegresjaRelatywneNajważniejszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneNajważniejszeOcenaTabela
+```
+
+### Model regresji Najważniejsze: ubóstwo Ustawowe
+
+```{r}
+RegresjaUstawoweNajważniejsze <- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiNajważniejsze$`Świadczenia zlecone ZUS`+ WydatkiNajważniejsze$`Renta socjalna i świadczenia przedemerytalne`+ WydatkiNajważniejsze$Renty+ WydatkiNajważniejsze$`Zasiłki dla bezrobotnych`+ WydatkiNajważniejsze$`Aktywne formy przeciwdziałania bezrobociu`)
+```
+
+vif(RegresjaUstawoweNajważniejsze)
+
+
+#### RegresjaUstawoweNajważniejszePodsumowanie
+
+```{r}
+RegresjaUstawoweNajważniejszePodsumowanie <- summary(RegresjaUstawoweNajważniejsze)
+RegresjaUstawoweNajważniejszeWyniki <- as.data.frame(RegresjaUstawoweNajważniejszePodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweNajważniejszeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweNajważniejszeWyniki) <- c("Wyraz wolny", "Świadczenia zlecone ZUS", "Renta socjalna i świadczenia przedemerytalne","Renty", "Zasiłki dla bezrobotnych", "Aktywne formy przeciwdziałania bezrobociu")
+
+RegresjaUstawoweNajważniejszeWynikiTabela <- kable(RegresjaUstawoweNajważniejszeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweNajważniejszeWynikiTabela
+summary(RegresjaUstawoweNajważniejsze)
+```
+
+#### RegresjaUstawoweNajważniejszeOcena
+
+```{r}
+
+RegresjaUstawoweNajważniejszeOcena <- as.data.frame(c(RegresjaUstawoweNajważniejszePodsumowanie$sigma, RegresjaUstawoweNajważniejszePodsumowanie$r.squared, RegresjaUstawoweNajważniejszePodsumowanie$fstatistic))
+RegresjaUstawoweNajważniejszeOcena <- as.data.frame(t(RegresjaUstawoweNajważniejszeOcena[0:3,]))
+
+colnames(RegresjaUstawoweNajważniejszeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweNajważniejszeOcena ) <- "Wartość"
+
+RegresjaUstawoweNajważniejszeOcenaTabela <- kable(RegresjaUstawoweNajważniejszeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweNajważniejszeOcenaTabela
+```
+
+### Model regresji Pojedyncze
+
+```{r}
+RegresjaSkrajneWychowawcze<- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiNajważniejsze$`Świadczenie wychowawcze i świadczenia rodzinne`)
+
+RegresjaSkrajneChorobowe<- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiNajważniejsze$`Zasiłki chorobowe i macierzyńskie`)
+
+RegresjaSkrajneEmerytury<- lm(Ubóstwo$`ubóstwo skrajne` ~ WydatkiNajważniejsze$`Emerytury z FUS oraz emerytury i renty rolnicze`)
+
+RegresjaRelatywneWychowawcze<- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiNajważniejsze$`Świadczenie wychowawcze i świadczenia rodzinne`)
+
+RegresjaRelatywneChorobowe<- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiNajważniejsze$`Zasiłki chorobowe i macierzyńskie`)
+
+RegresjaRelatywneEmerytury<- lm(Ubóstwo$`ubóstwo relatywne` ~ WydatkiNajważniejsze$`Emerytury z FUS oraz emerytury i renty rolnicze`)
+
+RegresjaUstawoweWychowawcze<- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiNajważniejsze$`Świadczenie wychowawcze i świadczenia rodzinne`)
+
+RegresjaUstawoweChorobowe<- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiNajważniejsze$`Zasiłki chorobowe i macierzyńskie`)
+
+RegresjaUstawoweEmerytury<- lm(Ubóstwo$`ubóstwo ustawowe` ~ WydatkiNajważniejsze$`Emerytury z FUS oraz emerytury i renty rolnicze`)
+
+```
+
+#### RegresjaSkrajneWychowawczePodsumowanie
+
+```{r}
+RegresjaSkrajneWychowawczePodsumowanie <- summary(RegresjaSkrajneWychowawcze)
+RegresjaSkrajneWychowawczeWyniki<- as.data.frame(RegresjaSkrajneWychowawczePodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneWychowawczeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneWychowawczeWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaSkrajneWychowawczeWynikiTabela <- kable(RegresjaSkrajneWychowawczeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneWychowawczeWynikiTabela
+```
+
+#### RegresjaSkrajneWychowawczeOcena
+
+```{r}
+RegresjaSkrajneWychowawczeOcena <- as.data.frame(c(RegresjaSkrajneWychowawczePodsumowanie$sigma, RegresjaSkrajneWychowawczePodsumowanie$r.squared, RegresjaSkrajneWychowawczePodsumowanie$fstatistic))
+RegresjaSkrajneWychowawczeOcena <- as.data.frame(t(RegresjaSkrajneWychowawczeOcena[0:3,]))
+
+colnames(RegresjaSkrajneWychowawczeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneWychowawczeOcena ) <- "Wartość"
+
+RegresjaSkrajneWychowawczeOcenaTabela <- kable(RegresjaSkrajneWychowawczeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneWychowawczeOcenaTabela
+```
+
+#### RegresjaSkrajneChorobowePodsumowanie
+
+```{r}
+RegresjaSkrajneChorobowePodsumowanie <- summary(RegresjaSkrajneChorobowe)
+RegresjaSkrajneChoroboweWyniki<- as.data.frame(RegresjaSkrajneChorobowePodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneChoroboweWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneChoroboweWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaSkrajneChoroboweWynikiTabela <- kable(RegresjaSkrajneChoroboweWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneChoroboweWynikiTabela
+```
+
+#### RegresjaSkrajneChoroboweOcena
+
+```{r}
+RegresjaSkrajneChoroboweOcena <- as.data.frame(c(RegresjaSkrajneChorobowePodsumowanie$sigma, RegresjaSkrajneChorobowePodsumowanie$r.squared, RegresjaSkrajneChorobowePodsumowanie$fstatistic))
+RegresjaSkrajneChoroboweOcena <- as.data.frame(t(RegresjaSkrajneChoroboweOcena[0:3,]))
+
+colnames(RegresjaSkrajneChoroboweOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneChoroboweOcena ) <- "Wartość"
+
+RegresjaSkrajneChoroboweOcenaTabela <- kable(RegresjaSkrajneChoroboweOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneChoroboweOcenaTabela
+```
+
+#### RegresjaSkrajneEmeryturyPodsumowanie
+
+```{r}
+RegresjaSkrajneEmeryturyPodsumowanie <- summary(RegresjaSkrajneEmerytury)
+RegresjaSkrajneEmeryturyWyniki<- as.data.frame(RegresjaSkrajneEmeryturyPodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneEmeryturyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneEmeryturyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaSkrajneEmeryturyWynikiTabela <- kable(RegresjaSkrajneEmeryturyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneEmeryturyWynikiTabela
+```
+
+#### RegresjaSkrajneEmeryturyOcena
+
+```{r}
+RegresjaSkrajneEmeryturyOcena <- as.data.frame(c(RegresjaSkrajneEmeryturyPodsumowanie$sigma, RegresjaSkrajneEmeryturyPodsumowanie$r.squared, RegresjaSkrajneEmeryturyPodsumowanie$fstatistic))
+RegresjaSkrajneEmeryturyOcena <- as.data.frame(t(RegresjaSkrajneEmeryturyOcena[0:3,]))
+
+colnames(RegresjaSkrajneEmeryturyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneEmeryturyOcena ) <- "Wartość"
+
+RegresjaSkrajneEmeryturyOcenaTabela <- kable(RegresjaSkrajneEmeryturyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneEmeryturyOcenaTabela
+```
+
+#### RegresjaSkrajneRentyPodsumowanie
+
+```{r}
+RegresjaSkrajneRentyPodsumowanie <- summary(RegresjaSkrajneRenty)
+RegresjaSkrajneRentyWyniki<- as.data.frame(RegresjaSkrajneRentyPodsumowanie$coefficients)
+
+colnames(RegresjaSkrajneRentyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaSkrajneRentyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaSkrajneRentyWynikiTabela <- kable(RegresjaSkrajneRentyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneRentyWynikiTabela
+```
+
+#### RegresjaSkrajneRentyOcena
+
+```{r}
+RegresjaSkrajneRentyOcena <- as.data.frame(c(RegresjaSkrajneRentyPodsumowanie$sigma, RegresjaSkrajneRentyPodsumowanie$r.squared, RegresjaSkrajneRentyPodsumowanie$fstatistic))
+RegresjaSkrajneRentyOcena <- as.data.frame(t(RegresjaSkrajneRentyOcena[0:3,]))
+
+colnames(RegresjaSkrajneRentyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaSkrajneRentyOcena ) <- "Wartość"
+
+RegresjaSkrajneRentyOcenaTabela <- kable(RegresjaSkrajneRentyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaSkrajneRentyOcenaTabela
+```
+
+#### RegresjaRelatywneWychowawczePodsumowanie
+
+```{r}
+RegresjaRelatywneWychowawczePodsumowanie <- summary(RegresjaRelatywneWychowawcze)
+RegresjaRelatywneWychowawczeWyniki<- as.data.frame(RegresjaRelatywneWychowawczePodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneWychowawczeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneWychowawczeWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaRelatywneWychowawczeWynikiTabela <- kable(RegresjaRelatywneWychowawczeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneWychowawczeWynikiTabela
+```
+
+#### RegresjaRelatywneWychowawczeOcena
+
+```{r}
+RegresjaRelatywneWychowawczeOcena <- as.data.frame(c(RegresjaRelatywneWychowawczePodsumowanie$sigma, RegresjaRelatywneWychowawczePodsumowanie$r.squared, RegresjaRelatywneWychowawczePodsumowanie$fstatistic))
+RegresjaRelatywneWychowawczeOcena <- as.data.frame(t(RegresjaRelatywneWychowawczeOcena[0:3,]))
+
+colnames(RegresjaRelatywneWychowawczeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneWychowawczeOcena ) <- "Wartość"
+
+RegresjaRelatywneWychowawczeOcenaTabela <- kable(RegresjaRelatywneWychowawczeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneWychowawczeOcenaTabela
+```
+
+#### RegresjaRelatywneChorobowePodsumowanie
+
+```{r}
+RegresjaRelatywneChorobowePodsumowanie <- summary(RegresjaRelatywneChorobowe)
+RegresjaRelatywneChoroboweWyniki<- as.data.frame(RegresjaRelatywneChorobowePodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneChoroboweWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneChoroboweWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaRelatywneChoroboweWynikiTabela <- kable(RegresjaRelatywneChoroboweWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneChoroboweWynikiTabela
+```
+
+#### RegresjaRelatywneChoroboweOcena
+
+```{r}
+RegresjaRelatywneChoroboweOcena <- as.data.frame(c(RegresjaRelatywneChorobowePodsumowanie$sigma, RegresjaRelatywneChorobowePodsumowanie$r.squared, RegresjaRelatywneChorobowePodsumowanie$fstatistic))
+RegresjaRelatywneChoroboweOcena <- as.data.frame(t(RegresjaRelatywneChoroboweOcena[0:3,]))
+
+colnames(RegresjaRelatywneChoroboweOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneChoroboweOcena ) <- "Wartość"
+
+RegresjaRelatywneChoroboweOcenaTabela <- kable(RegresjaRelatywneChoroboweOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneChoroboweOcenaTabela
+```
+
+#### RegresjaRelatywneEmeryturyPodsumowanie
+
+```{r}
+RegresjaRelatywneEmeryturyPodsumowanie <- summary(RegresjaRelatywneEmerytury)
+RegresjaRelatywneEmeryturyWyniki<- as.data.frame(RegresjaRelatywneEmeryturyPodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneEmeryturyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneEmeryturyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaRelatywneEmeryturyWynikiTabela <- kable(RegresjaRelatywneEmeryturyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneEmeryturyWynikiTabela
+```
+
+#### RegresjaRelatywneEmeryturyOcena
+
+```{r}
+RegresjaRelatywneEmeryturyOcena <- as.data.frame(c(RegresjaRelatywneEmeryturyPodsumowanie$sigma, RegresjaRelatywneEmeryturyPodsumowanie$r.squared, RegresjaRelatywneEmeryturyPodsumowanie$fstatistic))
+RegresjaRelatywneEmeryturyOcena <- as.data.frame(t(RegresjaRelatywneEmeryturyOcena[0:3,]))
+
+colnames(RegresjaRelatywneEmeryturyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneEmeryturyOcena ) <- "Wartość"
+
+RegresjaRelatywneEmeryturyOcenaTabela <- kable(RegresjaRelatywneEmeryturyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneEmeryturyOcenaTabela
+```
+
+#### RegresjaRelatywneRentyPodsumowanie
+
+```{r}
+RegresjaRelatywneRentyPodsumowanie <- summary(RegresjaRelatywneRenty)
+RegresjaRelatywneRentyWyniki<- as.data.frame(RegresjaRelatywneRentyPodsumowanie$coefficients)
+
+colnames(RegresjaRelatywneRentyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaRelatywneRentyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaRelatywneRentyWynikiTabela <- kable(RegresjaRelatywneRentyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneRentyWynikiTabela
+```
+
+#### RegresjaRelatywneRentyOcena
+
+```{r}
+RegresjaRelatywneRentyOcena <- as.data.frame(c(RegresjaRelatywneRentyPodsumowanie$sigma, RegresjaRelatywneRentyPodsumowanie$r.squared, RegresjaRelatywneRentyPodsumowanie$fstatistic))
+RegresjaRelatywneRentyOcena <- as.data.frame(t(RegresjaRelatywneRentyOcena[0:3,]))
+
+colnames(RegresjaRelatywneRentyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaRelatywneRentyOcena ) <- "Wartość"
+
+RegresjaRelatywneRentyOcenaTabela <- kable(RegresjaRelatywneRentyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaRelatywneRentyOcenaTabela
+```
+
+#### RegresjaUstawoweWychowawczePodsumowanie
+
+```{r}
+RegresjaUstawoweWychowawczePodsumowanie <- summary(RegresjaUstawoweWychowawcze)
+RegresjaUstawoweWychowawczeWyniki<- as.data.frame(RegresjaUstawoweWychowawczePodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweWychowawczeWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweWychowawczeWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaUstawoweWychowawczeWynikiTabela <- kable(RegresjaUstawoweWychowawczeWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweWychowawczeWynikiTabela
+```
+
+#### RegresjaUstawoweWychowawczeOcena
+
+```{r}
+RegresjaUstawoweWychowawczeOcena <- as.data.frame(c(RegresjaUstawoweWychowawczePodsumowanie$sigma, RegresjaUstawoweWychowawczePodsumowanie$r.squared, RegresjaUstawoweWychowawczePodsumowanie$fstatistic))
+RegresjaUstawoweWychowawczeOcena <- as.data.frame(t(RegresjaUstawoweWychowawczeOcena[0:3,]))
+
+colnames(RegresjaUstawoweWychowawczeOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweWychowawczeOcena ) <- "Wartość"
+
+RegresjaUstawoweWychowawczeOcenaTabela <- kable(RegresjaUstawoweWychowawczeOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweWychowawczeOcenaTabela
+```
+
+#### RegresjaUstawoweChorobowePodsumowanie
+
+```{r}
+RegresjaUstawoweChorobowePodsumowanie <- summary(RegresjaUstawoweChorobowe)
+RegresjaUstawoweChoroboweWyniki<- as.data.frame(RegresjaUstawoweChorobowePodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweChoroboweWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweChoroboweWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaUstawoweChoroboweWynikiTabela <- kable(RegresjaUstawoweChoroboweWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweChoroboweWynikiTabela
+```
+
+#### RegresjaUstawoweChoroboweOcena
+
+```{r}
+RegresjaUstawoweChoroboweOcena <- as.data.frame(c(RegresjaUstawoweChorobowePodsumowanie$sigma, RegresjaUstawoweChorobowePodsumowanie$r.squared, RegresjaUstawoweChorobowePodsumowanie$fstatistic))
+RegresjaUstawoweChoroboweOcena <- as.data.frame(t(RegresjaUstawoweChoroboweOcena[0:3,]))
+
+colnames(RegresjaUstawoweChoroboweOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweChoroboweOcena ) <- "Wartość"
+
+RegresjaUstawoweChoroboweOcenaTabela <- kable(RegresjaUstawoweChoroboweOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweChoroboweOcenaTabela
+```
+
+#### RegresjaUstawoweEmeryturyPodsumowanie
+
+```{r}
+RegresjaUstawoweEmeryturyPodsumowanie <- summary(RegresjaUstawoweEmerytury)
+RegresjaUstawoweEmeryturyWyniki<- as.data.frame(RegresjaUstawoweEmeryturyPodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweEmeryturyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweEmeryturyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaUstawoweEmeryturyWynikiTabela <- kable(RegresjaUstawoweEmeryturyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweEmeryturyWynikiTabela
+```
+
+#### RegresjaUstawoweEmeryturyOcena
+
+```{r}
+RegresjaUstawoweEmeryturyOcena <- as.data.frame(c(RegresjaUstawoweEmeryturyPodsumowanie$sigma, RegresjaUstawoweEmeryturyPodsumowanie$r.squared, RegresjaUstawoweEmeryturyPodsumowanie$fstatistic))
+RegresjaUstawoweEmeryturyOcena <- as.data.frame(t(RegresjaUstawoweEmeryturyOcena[0:3,]))
+
+colnames(RegresjaUstawoweEmeryturyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweEmeryturyOcena ) <- "Wartość"
+
+RegresjaUstawoweEmeryturyOcenaTabela <- kable(RegresjaUstawoweEmeryturyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweEmeryturyOcenaTabela
+```
+
+#### RegresjaUstawoweRentyPodsumowanie
+
+```{r}
+RegresjaUstawoweRentyPodsumowanie <- summary(RegresjaUstawoweRenty)
+RegresjaUstawoweRentyWyniki<- as.data.frame(RegresjaUstawoweRentyPodsumowanie$coefficients)
+
+colnames(RegresjaUstawoweRentyWyniki) <- c("Estymata", "Błąd standardowy", "Wartość t", "Wartość p")
+rownames(RegresjaUstawoweRentyWyniki) <- c("Wyraz wolny", "Współczynnik kierunkowy regresji")
+
+RegresjaUstawoweRentyWynikiTabela <- kable(RegresjaUstawoweRentyWyniki, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweRentyWynikiTabela
+```
+
+#### RegresjaUstawoweRentyOcena
+
+```{r}
+RegresjaUstawoweRentyOcena <- as.data.frame(c(RegresjaUstawoweRentyPodsumowanie$sigma, RegresjaUstawoweRentyPodsumowanie$r.squared, RegresjaUstawoweRentyPodsumowanie$fstatistic))
+RegresjaUstawoweRentyOcena <- as.data.frame(t(RegresjaUstawoweRentyOcena[0:3,]))
+
+colnames(RegresjaUstawoweRentyOcena ) <- c("Błąd standardowy reszt", "Współczynnik determinacji", "Statystyka testowa F")
+rownames(RegresjaUstawoweRentyOcena ) <- "Wartość"
+
+RegresjaUstawoweRentyOcenaTabela <- kable(RegresjaUstawoweRentyOcena, table.attr = "class='table'",align = "c") %>%
+  kable_paper(c("striped", "hover", "condensed", "responsive", full_width = F, position = "center"))
+
+RegresjaUstawoweRentyOcenaTabela
+```
+
